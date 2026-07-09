@@ -128,9 +128,30 @@ export const dnsmasqSettingsGetSchema = {
   ...includeRawField
 };
 
+const optionalStringList = z.union([z.array(z.string()), z.string()]).optional();
+
 export const dnsmasqSettingsUpdateSchema = {
+  enabled: optionalBoolean,
+  interface: optionalStringList,
+  strict_interface_binding: optionalBoolean,
+  dns_listen_port: z.number().int().min(0).max(65535).optional(),
+  dnssec: optionalBoolean,
+  log_queries: optionalBoolean,
+  dns_forward_max: z.number().int().min(0).optional(),
+  cache_size: z.number().int().min(0).optional(),
+  no_ident: optionalBoolean,
+  strict_order: optionalBoolean,
+  domain_needed: optionalBoolean,
+  no_private_reverse: optionalBoolean,
+  no_resolv: optionalBoolean,
+  no_hosts: optionalBoolean,
+  dhcp_no_interface: optionalStringList,
+  dhcp_fqdn: optionalBoolean,
   domain: optionalString,
+  dhcp_local_domain: optionalBoolean,
   lease_max: z.number().int().min(0).optional(),
+  dhcp_authoritative: optionalBoolean,
+  register_firewall_rules: optionalBoolean,
   reply_delay: z.number().int().min(0).max(60).optional(),
   apply: applySchema.optional(),
   reconfigure: z.boolean().optional(),

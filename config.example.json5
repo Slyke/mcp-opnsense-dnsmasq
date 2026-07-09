@@ -33,7 +33,7 @@
   },
 
   history: {
-    file: "./data/history.json5",
+    file: "./data/history.jsonl",
     count: 50,
     recordReads: false,
   },
@@ -45,8 +45,8 @@
   defaultInterfaceKey: "lan",
 
   // Set these before applying DHCP reservation writes.
-  allowedStaticDhcpCidrs: ["10.7.0.0/16"],
-  protectedIps: ["10.7.1.1", "10.7.7.77"],
+  allowedStaticDhcpCidrs: ["192.168.1.0/24"],
+  protectedIps: ["192.168.1.1", "192.168.1.254"],
   excludedIpRanges: [],
   dynamicDhcpRanges: [],
   rejectStaticInsideDynamicRange: false,

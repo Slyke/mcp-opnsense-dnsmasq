@@ -1,7 +1,7 @@
 node_modules/
 coverage/
 logs/
-history.json5
+history.jsonl
 config.json5
 build-info.json
 /certs/
@@ -15,6 +15,6 @@ build-info.json
 !config.example.json5
 
 data/config.json5
-data/history.json5
+data/history.jsonl
 data/certs/*
 !data/certs/.gitkeep

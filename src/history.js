@@ -1,6 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
-import JSON5 from "json5";
+
+const parseHistoryEntries = ({ raw }) => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  if (trimmed.startsWith("[")) {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : [];
+  }
+
+  return trimmed
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => JSON.parse(line));
+};
 
 const readHistoryEntries = ({ historyFile }) => {
   if (!fs.existsSync(historyFile)) {
@@ -8,8 +24,7 @@ const readHistoryEntries = ({ historyFile }) => {
   }
 
   try {
-    const parsed = JSON5.parse(fs.readFileSync(historyFile, "utf8"));
-    return Array.isArray(parsed) ? parsed : [];
+    return parseHistoryEntries({ raw: fs.readFileSync(historyFile, "utf8") });
   } catch {
     return [];
   }
@@ -17,7 +32,8 @@ const readHistoryEntries = ({ historyFile }) => {
 
 const writeHistoryEntries = ({ historyFile, entries }) => {
   fs.mkdirSync(path.dirname(historyFile), { recursive: true });
-  fs.writeFileSync(historyFile, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
+  const payload = entries.length > 0 ? `${entries.map((entry) => JSON.stringify(entry)).join("\n")}\n` : "";
+  fs.writeFileSync(historyFile, payload, "utf8");
 };
 
 export const createHistoryStore = ({ config }) => {

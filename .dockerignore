@@ -2,10 +2,10 @@ node_modules
 npm-debug.log
 coverage
 logs
-history.json5
+history.jsonl
 config.json5
 data/config.json5
-data/history.json5
+data/history.jsonl
 data/certs
 certs
 .env

@@ -3,7 +3,7 @@ import path from "node:path";
 import JSON5 from "json5";
 
 const DEFAULT_CONFIG_FILE = "./config.json5";
-const DEFAULT_HISTORY_FILE = "./history.json5";
+const DEFAULT_HISTORY_FILE = "./history.jsonl";
 const DEFAULT_CERTS_DIR = "./certs";
 
 const parseBoolean = ({ value, fallback = false }) => {

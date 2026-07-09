@@ -4,57 +4,9 @@ LAN-hosted MCP server for safely querying and managing OPNsense Dnsmasq DHCP sta
 
 Dnsmasq static DHCP reservations are represented by Dnsmasq **Hosts** entries. This server normalizes those OPNsense model fields (`host`, `ip`, `hwaddr`, `descr`) into MCP-facing fields (`hostname`, `ip_address`, `hw_address`, `description`).
 
-## Tools
+`dnsmasq_settings_update` can edit the Dnsmasq enabled flag, bound interfaces, strict interface binding, DNS listen port, DNSSEC, query logging, DNS cache/query limits, forwarding protection toggles, DHCP disabled interfaces, DHCP FQDN/local-domain behavior, DHCP `domain`, `lease_max`, authoritative mode, firewall rule registration, and `reply_delay`. `dhcp_access_block` creates or updates a Dnsmasq Host with `ignore=true`; `dhcp_access_unblock` clears `ignore` or deletes an ignore-only host entry. `dhcp_access_policy_set` maps `blacklist` to normal dynamic ranges and `whitelist` to Dnsmasq range `mode=static`.
 
-Read-only tools:
-
-- `dnsmasq_status`
-- `dnsmasq_settings_get`
-- `dhcp_leases_search`
-- `dhcp_static_list`
-- `dhcp_static_get`
-- `dhcp_static_find_conflicts`
-- `dhcp_access_blocks_list`
-- `dhcp_access_policy_get`
-- `dhcp_ranges_list`
-- `dhcp_ranges_search`
-- `dhcp_ranges_get`
-- `dhcp_options_list`
-- `dhcp_options_search`
-- `dhcp_options_get`
-- `dhcp_tags_list`
-- `dhcp_tags_search`
-- `dhcp_tags_get`
-- `dhcp_domains_list`
-- `dhcp_domains_search`
-- `dhcp_domains_get`
-- `interfaces_list`
-- `interfaces_get`
-- `arp_list`
-- `arp_search`
-- `mac_vendor_lookup`
-- `router_ping`
-- `client_summary`
-- `history_search`
-
-Mutating tools require a readwrite token and include `apply`, defaulting to `false`:
-
-- `dnsmasq_settings_update`
-- `dhcp_static_create`
-- `dhcp_static_update`
-- `dhcp_static_delete`
-- `dhcp_access_block`
-- `dhcp_access_unblock`
-- `dhcp_access_policy_set`
-- `dhcp_ranges_update`
-- `dhcp_ranges_delete`
-- `dhcp_tags_update`
-- `dhcp_tags_delete`
-- `dhcp_domains_update`
-- `dhcp_domains_delete`
-- `dnsmasq_reconfigure`
-
-`dnsmasq_settings_update` can edit DHCP `domain`, `lease_max`, and `reply_delay`. `dhcp_access_block` creates or updates a Dnsmasq Host with `ignore=true`; `dhcp_access_unblock` clears `ignore` or deletes an ignore-only host entry. `dhcp_access_policy_set` maps `blacklist` to normal dynamic ranges and `whitelist` to Dnsmasq range `mode=static`.
+Normalized Dnsmasq settings use explicit MCP field names: `dns_listen_port` maps to Dnsmasq `port`, `strict_interface_binding` maps to `strictbind`, `dhcp_no_interface` maps to `dhcp.no_interface`, `dhcp_fqdn` maps to `dhcp.fqdn`, `dhcp_local_domain` maps to `dhcp.local`, `dhcp_authoritative` maps to `dhcp.authoritative`, and `register_firewall_rules` maps to `dhcp.default_fw_rules`.
 
 If no readwrite bearer tokens are configured, the server is effectively read-only.
 
@@ -117,7 +69,7 @@ HTTPS_ENABLED=false
 HTTPS_HOST=0.0.0.0
 HTTPS_PORT=3443
 CONFIG_FILE=./data/config.json5
-HISTORY_FILE=./data/history.json5
+HISTORY_FILE=./data/history.jsonl
 HISTORY_COUNT=50
 HISTORY_RECORD_READS=false
 CERTS_DIR=./data/certs
@@ -127,8 +79,8 @@ READY_CHECK_OPNSENSE=false
 AUTH_HEALTHCHECKS=false
 DEFAULT_INTERFACE=LAN
 DEFAULT_INTERFACE_KEY=lan
-ALLOWED_STATIC_DHCP_CIDRS=10.7.0.0/16
-PROTECTED_IPS=10.7.1.1,10.7.7.77
+ALLOWED_STATIC_DHCP_CIDRS=192.168.1.0/24
+PROTECTED_IPS=192.168.1.1,192.168.1.254
 EXCLUDED_IP_RANGES=
 DYNAMIC_DHCP_RANGES=
 REJECT_STATIC_INSIDE_DYNAMIC_RANGE=false
@@ -145,6 +97,27 @@ Environment variables override ./data/config.json5. If HTTPS is enabled and `ser
 
 ## Docker
 
+Run the published Docker Hub image:
+
+```bash
+docker run --rm \
+  -p 3000:3000 \
+  -v "$PWD/data:/app/data" \
+  -e MCP_READ_BEARER_TOKENS='[{name:"reader1",token:"read-token"}]' \
+  -e MCP_READWRITE_BEARER_TOKENS='[{name:"admin1",token:"write-token"}]' \
+  -e OPNSENSE_BASE_URL='https://opnsense.lan' \
+  -e OPNSENSE_API_KEY='replace-me' \
+  -e OPNSENSE_API_SECRET='replace-me' \
+  -e ALLOWED_STATIC_DHCP_CIDRS='192.168.1.0/24' \
+  -e PROTECTED_IPS='192.168.1.1,192.168.1.254' \
+  -e CONFIG_FILE="./data/config.json5" \
+  -e HISTORY_FILE="./data/history.jsonl" \
+  -e CERTS_DIR="./data/certs" \
+  slyke/mcp-opnsense-dnsmasq:latest
+```
+
+Build a local image:
+
 ```bash
 docker build -t mcp-opnsense-dnsmasq:local .
 docker run --rm \
@@ -155,15 +128,18 @@ docker run --rm \
   -e OPNSENSE_BASE_URL='https://opnsense.lan' \
   -e OPNSENSE_API_KEY='replace-me' \
   -e OPNSENSE_API_SECRET='replace-me' \
-  -e ALLOWED_STATIC_DHCP_CIDRS='10.7.0.0/16' \
-  -e PROTECTED_IPS='10.7.1.1,10.7.7.77' \
+  -e ALLOWED_STATIC_DHCP_CIDRS='192.168.1.0/24' \
+  -e PROTECTED_IPS='192.168.1.1,192.168.1.254' \
   -e CONFIG_FILE="./data/config.json5" \
-  -e HISTORY_FILE="./data/history.json5" \
+  -e HISTORY_FILE="./data/history.jsonl" \
   -e CERTS_DIR="./data/certs" \
   mcp-opnsense-dnsmasq:local
 ```
 
 ## Kubernetes
+
+<details>
+<summary>Kubernetes manifest</summary>
 
 ```yaml
 apiVersion: v1
@@ -194,7 +170,7 @@ spec:
     spec:
       containers:
         - name: server
-          image: registry.example.com/home/opnsense-dnsmasq-mcp:v0.1.0
+          image: slyke/mcp-opnsense-dnsmasq:latest
           ports:
             - containerPort: 3000
           envFrom:
@@ -206,9 +182,9 @@ spec:
             - name: HTTPS_ENABLED
               value: "false"
             - name: ALLOWED_STATIC_DHCP_CIDRS
-              value: "10.7.0.0/16"
+              value: "192.168.1.0/24"
             - name: PROTECTED_IPS
-              value: "10.7.1.1,10.7.7.77"
+              value: "192.168.1.1,192.168.1.254"
             - name: LOG_CONSOLE_FORMAT
               value: json
             - name: LOG_K8S_METADATA_ENABLED
@@ -231,7 +207,12 @@ spec:
               port: 3000
 ```
 
+</details>
+
 ## Codex MCP Config
+
+<details>
+<summary>Full Codex MCP config</summary>
 
 ```toml
 [mcp_servers.opnsense]
@@ -363,6 +344,111 @@ approval_mode = "prompt"
 approval_mode = "prompt"
 ```
 
+</details>
+
+## Tools
+
+Read-only tools:
+
+- `dnsmasq_status`
+- `dnsmasq_settings_get`
+- `dhcp_leases_search`
+- `dhcp_static_list`
+- `dhcp_static_get`
+- `dhcp_static_find_conflicts`
+- `dhcp_access_blocks_list`
+- `dhcp_access_policy_get`
+- `dhcp_ranges_list`
+- `dhcp_ranges_search`
+- `dhcp_ranges_get`
+- `dhcp_options_list`
+- `dhcp_options_search`
+- `dhcp_options_get`
+- `dhcp_tags_list`
+- `dhcp_tags_search`
+- `dhcp_tags_get`
+- `dhcp_domains_list`
+- `dhcp_domains_search`
+- `dhcp_domains_get`
+- `interfaces_list`
+- `interfaces_get`
+- `arp_list`
+- `arp_search`
+- `mac_vendor_lookup`
+- `router_ping`
+- `client_summary`
+- `history_search`
+
+Mutating tools require a readwrite token and include `apply`, defaulting to `false`:
+
+- `dnsmasq_settings_update`
+- `dhcp_static_create`
+- `dhcp_static_update`
+- `dhcp_static_delete`
+- `dhcp_access_block`
+- `dhcp_access_unblock`
+- `dhcp_access_policy_set`
+- `dhcp_ranges_update`
+- `dhcp_ranges_delete`
+- `dhcp_tags_update`
+- `dhcp_tags_delete`
+- `dhcp_domains_update`
+- `dhcp_domains_delete`
+- `dnsmasq_reconfigure`
+
+## CLI MCP Clients
+
+This server exposes Streamable HTTP MCP at `/mcp`. Start the server first, then point CLI clients at `http://<host>:3000/mcp` and use one of the configured MCP bearer tokens.
+
+### Claude Code
+
+For a one-machine setup, add the remote HTTP server with an Authorization header:
+
+```bash
+export OPNSENSE_MCP_TOKEN="replace-read-or-readwrite-token"
+claude mcp add --transport http opnsense http://opnsense-dnsmasq-mcp.lan:3000/mcp \
+  --header "Authorization: Bearer ${OPNSENSE_MCP_TOKEN}"
+claude
+```
+
+For a project-shareable config, create `.mcp.json` and keep the token in the environment:
+
+```json
+{
+  "mcpServers": {
+    "opnsense": {
+      "type": "http",
+      "url": "http://opnsense-dnsmasq-mcp.lan:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer ${OPNSENSE_MCP_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Run `OPNSENSE_MCP_TOKEN="replace-read-or-readwrite-token" claude`, then use `/mcp` inside Claude Code to confirm the server is connected.
+
+### Codex CLI
+
+Codex CLI uses `config.toml` for Streamable HTTP MCP servers. Add this to `~/.codex/config.toml`, or to `.codex/config.toml` in a trusted project:
+
+```toml
+[mcp_servers.opnsense]
+url = "http://opnsense-dnsmasq-mcp.lan:3000/mcp"
+bearer_token_env_var = "OPNSENSE_MCP_TOKEN"
+default_tools_approval_mode = "prompt"
+```
+
+Then run:
+
+```bash
+export OPNSENSE_MCP_TOKEN="replace-read-or-readwrite-token"
+codex
+```
+
+Use `/mcp` in the Codex TUI to confirm the server is connected. `codex mcp add` is useful for stdio MCP servers; for this HTTP server, use the TOML form above.
+
 ## Development
 
 ```bash
@@ -393,15 +479,21 @@ USERNAME=YOURUSERNAME
 DOMAIN=registry.example.com
 IMAGE_NAME=mcp-opnsense-dnsmasq
 # VERSION="dev"
-VERSION=v0.4.2
+VERSION=v0.0.1
 
 git tag -a "$VERSION" -m "$VERSION"
+# git tag -d "$VERSION"
 git push origin "$VERSION"
 # git push --force origin "$VERSION"
 
 SHA=$(git rev-parse --short=12 HEAD)
 
 docker build -t "$IMAGE_NAME:build" -f ./Dockerfile .
+
+# docker tag "$IMAGE_NAME:build" "$USERNAME/$IMAGE_NAME:latest"
+# docker tag "$IMAGE_NAME:build" "$DOMAIN/$USERNAME/$IMAGE_NAME:latest"
+# docker push "$USERNAME/$IMAGE_NAME:latest"
+# docker push "$DOMAIN/$USERNAME/$IMAGE_NAME:latest"
 
 for TAG in latest "$VERSION" "$VERSION-$SHA"; do
   docker tag "$IMAGE_NAME:build" "$USERNAME/$IMAGE_NAME:$TAG"
