@@ -97,3 +97,59 @@ test("OPNsense client sends Basic Auth and calls Dnsmasq endpoints", async () =>
     await close({ server });
   }
 });
+
+test("OPNsense client calls Dnsmasq range/tag/domain/option and interface endpoints", async () => {
+  const calls = [];
+  const server = http.createServer(async (req, res) => {
+    calls.push({
+      method: req.method,
+      url: req.url,
+      body: await readJson({ req })
+    });
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+  });
+  const port = await listen({ server });
+  const client = createOpnsenseClient({
+    config: {
+      opnsense: {
+        baseUrl: "http://127.0.0.1:" + port,
+        apiKey: "key",
+        apiSecret: "secret",
+        timeoutMs: 5000,
+        tlsRejectUnauthorized: true
+      }
+    },
+    logger: { generateLog: () => {} }
+  });
+
+  try {
+    await client.setDnsmasqSettings({ dnsmasq: { dhcp: { lease_max: "100" } } });
+    await client.getRange({ uuid: "range-1" });
+    await client.setRange({ uuid: "range-1", range: { mode: "static" } });
+    await client.deleteRange({ uuid: "range-1" });
+    await client.getOption({ uuid: "option-1" });
+    await client.setTag({ uuid: "tag-1", tag: { tag: "known" } });
+    await client.setDomain({ uuid: "domain-1", domain: { domain: "example.lan" } });
+    await client.getInterfacesInfo({ details: true, body: { rowCount: 10 } });
+    await client.getInterface({ interfaceName: "igb0" });
+
+    assert.deepEqual(calls.map((call) => call.url), [
+      "/api/dnsmasq/settings/set",
+      "/api/dnsmasq/settings/get_range/range-1",
+      "/api/dnsmasq/settings/set_range/range-1",
+      "/api/dnsmasq/settings/del_range/range-1",
+      "/api/dnsmasq/settings/get_option/option-1",
+      "/api/dnsmasq/settings/set_tag/tag-1",
+      "/api/dnsmasq/settings/set_domain/domain-1",
+      "/api/interfaces/overview/interfaces_info/1",
+      "/api/interfaces/overview/get_interface/igb0"
+    ]);
+    assert.deepEqual(calls[0].body, { dnsmasq: { dhcp: { lease_max: "100" } } });
+    assert.deepEqual(calls[2].body, { range: { mode: "static" } });
+    assert.deepEqual(calls[5].body, { tag: { tag: "known" } });
+    assert.deepEqual(calls[6].body, { domainoverride: { domain: "example.lan" } });
+  } finally {
+    await close({ server });
+  }
+});

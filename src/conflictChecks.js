@@ -95,19 +95,6 @@ export const findStaticReservationConflicts = ({
       });
     }
 
-    for (const range of findMatchingRanges({ ranges: config.metallbRanges, ip: normalizedIp })) {
-      addConflict({
-        conflicts,
-        type: "excluded_range",
-        severity: "error",
-        message: "IP address is inside a MetalLB range.",
-        match: {
-          ip_address: normalizedIp,
-          range
-        }
-      });
-    }
-
     for (const range of findMatchingRanges({
       ranges: [...config.dynamicDhcpRanges, ...dynamicRanges],
       ip: normalizedIp

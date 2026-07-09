@@ -306,8 +306,7 @@ const logStartupDiagnostics = ({ logger, buildInfo, config }) => {
     httpsPort: config.https.port,
     opnsenseBaseUrlConfigured: Boolean(config.opnsense.baseUrl),
     opnsenseApiKeyConfigured: Boolean(config.opnsense.apiKey),
-    opnsenseApiSecretConfigured: Boolean(config.opnsense.apiSecret),
-    readOnly: config.readOnly
+    opnsenseApiSecretConfigured: Boolean(config.opnsense.apiSecret)
   };
 
   if (Object.keys(kubernetes).length > 0 && process.env.LOG_K8S_METADATA_ENABLED !== "true") {

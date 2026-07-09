@@ -292,6 +292,15 @@ export const loadConfig = ({
       min: 1,
       max: 5000
     }),
+    historyRecordReads: parseBoolean({
+      value: envOrConfig({
+        env,
+        config: fileConfig,
+        envKey: "HISTORY_RECORD_READS",
+        configPath: "history.recordReads",
+        fallback: false
+      })
+    }),
     certsDir: path.resolve(cwd, String(envOrConfig({
       env,
       config: fileConfig,
@@ -307,9 +316,6 @@ export const loadConfig = ({
         configPath: "readyCheckOpnsense",
         fallback: false
       })
-    }),
-    readOnly: parseBoolean({
-      value: envOrConfig({ env, config: fileConfig, envKey: "READ_ONLY", configPath: "readOnly", fallback: false })
     }),
     defaultInterface: String(envOrConfig({
       env,
@@ -345,9 +351,6 @@ export const loadConfig = ({
         configPath: "excludedIpRanges",
         fallback: []
       })
-    }),
-    metallbRanges: parseList({
-      value: envOrConfig({ env, config: fileConfig, envKey: "METALLB_RANGES", configPath: "metallbRanges", fallback: [] })
     }),
     dynamicDhcpRanges: parseList({
       value: envOrConfig({
@@ -413,13 +416,11 @@ export const loadConfig = ({
 
 export const publicConfigSummary = ({ config }) => {
   return {
-    read_only: config.readOnly,
     default_interface: config.defaultInterface,
     default_interface_key: config.defaultInterfaceKey,
     allowed_lan_cidrs: config.allowedStaticDhcpCidrs,
     protected_ips: config.protectedIps,
     excluded_ip_ranges: config.excludedIpRanges,
-    metallb_ranges: config.metallbRanges,
     reject_static_inside_dynamic_range: config.rejectStaticInsideDynamicRange
   };
 };

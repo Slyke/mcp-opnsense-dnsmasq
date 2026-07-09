@@ -41,14 +41,6 @@ export const notFoundError = ({ message = "Not found.", details = {} } = {}) => 
   });
 };
 
-export const readOnlyError = ({ message = "Server is read-only.", details = {} } = {}) => {
-  return errorResponse({
-    code: "read_only",
-    message,
-    details
-  });
-};
-
 export const opnsenseError = ({ message = "OPNsense API request failed.", details = {} } = {}) => {
   return errorResponse({
     code: "opnsense_error",

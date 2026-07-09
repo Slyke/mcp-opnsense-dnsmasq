@@ -9,12 +9,27 @@ Dnsmasq static DHCP reservations are represented by Dnsmasq **Hosts** entries. T
 Read-only tools:
 
 - `dnsmasq_status`
+- `dnsmasq_settings_get`
 - `dhcp_leases_search`
 - `dhcp_static_list`
 - `dhcp_static_get`
 - `dhcp_static_find_conflicts`
+- `dhcp_access_blocks_list`
+- `dhcp_access_policy_get`
 - `dhcp_ranges_list`
+- `dhcp_ranges_search`
+- `dhcp_ranges_get`
 - `dhcp_options_list`
+- `dhcp_options_search`
+- `dhcp_options_get`
+- `dhcp_tags_list`
+- `dhcp_tags_search`
+- `dhcp_tags_get`
+- `dhcp_domains_list`
+- `dhcp_domains_search`
+- `dhcp_domains_get`
+- `interfaces_list`
+- `interfaces_get`
 - `arp_list`
 - `arp_search`
 - `mac_vendor_lookup`
@@ -24,12 +39,24 @@ Read-only tools:
 
 Mutating tools require a readwrite token and include `apply`, defaulting to `false`:
 
+- `dnsmasq_settings_update`
 - `dhcp_static_create`
 - `dhcp_static_update`
 - `dhcp_static_delete`
+- `dhcp_access_block`
+- `dhcp_access_unblock`
+- `dhcp_access_policy_set`
+- `dhcp_ranges_update`
+- `dhcp_ranges_delete`
+- `dhcp_tags_update`
+- `dhcp_tags_delete`
+- `dhcp_domains_update`
+- `dhcp_domains_delete`
 - `dnsmasq_reconfigure`
 
-When `READ_ONLY=true`, mutating tools return a structured `read_only` error.
+`dnsmasq_settings_update` can edit DHCP `domain`, `lease_max`, and `reply_delay`. `dhcp_access_block` creates or updates a Dnsmasq Host with `ignore=true`; `dhcp_access_unblock` clears `ignore` or deletes an ignore-only host entry. `dhcp_access_policy_set` maps `blacklist` to normal dynamic ranges and `whitelist` to Dnsmasq range `mode=static`.
+
+If no readwrite bearer tokens are configured, the server is effectively read-only.
 
 ## OPNsense Setup
 
@@ -54,12 +81,13 @@ Target: OPNsense 25.7.x Dnsmasq DNS & DHCP.
    - Services: Dnsmasq DNS/DHCP: Settings
    - Diagnostics: ARP Table
    - Diagnostics: Ping
+   - Status: Overview
 6. Save the user.
 7. Reopen the user and click the API key add button in the API keys section.
 8. Download or copy the generated key and secret immediately. OPNsense shows the secret only once.
 9. Set OPNSENSE_API_KEY to the generated key and OPNSENSE_API_SECRET to the generated secret.
 
-The Dnsmasq Settings privilege covers Dnsmasq service status, leases, settings, hosts, ranges, options, and reconfigure APIs in OPNsense 25.7. Diagnostics: ARP Table is needed for ARP tools and richer conflict/client summaries. Diagnostics: Ping is only needed for router_ping and client_summary when ping is requested. Services: Dnsmasq DNS/DHCP: Log File is not used by this MCP server.
+The Dnsmasq Settings privilege covers Dnsmasq service status, leases, settings, hosts, ranges, options, DHCP tags, domain overrides, and reconfigure APIs in OPNsense 25.7. Status: Overview is needed for `interfaces_list` and `interfaces_get`. Diagnostics: ARP Table is needed for ARP tools and richer conflict/client summaries. Diagnostics: Ping is only needed for `router_ping` and `client_summary` when ping is requested. Services: Dnsmasq DNS/DHCP: Log File is not used by this MCP server.
 
 The server sends these values to OPNsense as HTTP Basic Auth, with the key as username and the secret as password. Do not use an administrator personal API key for this integration. If OPNsense returns HTTP 403, the API user is authenticated but likely missing one of the listed privileges.
 
@@ -91,18 +119,17 @@ HTTPS_PORT=3443
 CONFIG_FILE=./data/config.json5
 HISTORY_FILE=./data/history.json5
 HISTORY_COUNT=50
+HISTORY_RECORD_READS=false
 CERTS_DIR=./data/certs
 OPNSENSE_TIMEOUT_MS=10000
 OPNSENSE_TLS_REJECT_UNAUTHORIZED=true
 READY_CHECK_OPNSENSE=false
 AUTH_HEALTHCHECKS=false
-READ_ONLY=false
 DEFAULT_INTERFACE=LAN
 DEFAULT_INTERFACE_KEY=lan
 ALLOWED_STATIC_DHCP_CIDRS=10.7.0.0/16
 PROTECTED_IPS=10.7.1.1,10.7.7.77
 EXCLUDED_IP_RANGES=
-METALLB_RANGES=
 DYNAMIC_DHCP_RANGES=
 REJECT_STATIC_INSIDE_DYNAMIC_RANGE=false
 STRICT_HOSTNAME=false
@@ -111,6 +138,8 @@ INCLUDE_RAW_DEFAULT=false
 MAX_PING_COUNT=5
 MAX_PING_PACKET_SIZE=128
 ```
+
+Set HISTORY_RECORD_READS=true or history.recordReads: true to append read-only MCP calls to history for troubleshooting. Read history entries store request metadata, identity name, tool name, redacted arguments, result count when available, and error code when a tool returns an error; they do not store router response bodies.
 
 Environment variables override ./data/config.json5. If HTTPS is enabled and `server.crt`/`server.key` are missing in `CERTS_DIR`, the server generates a local self-signed certificate.
 
@@ -225,6 +254,57 @@ approval_mode = "auto"
 [mcp_servers.opnsense.tools.dhcp_static_find_conflicts]
 approval_mode = "auto"
 
+[mcp_servers.opnsense.tools.dnsmasq_settings_get]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_access_blocks_list]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_access_policy_get]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_ranges_list]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_ranges_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_ranges_get]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_options_list]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_options_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_options_get]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_tags_list]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_tags_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_tags_get]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_domains_list]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_domains_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.dhcp_domains_get]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.interfaces_list]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.interfaces_get]
+approval_mode = "auto"
+
 [mcp_servers.opnsense.tools.arp_list]
 approval_mode = "auto"
 
@@ -247,6 +327,36 @@ approval_mode = "prompt"
 approval_mode = "prompt"
 
 [mcp_servers.opnsense.tools.dhcp_static_delete]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dnsmasq_settings_update]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_access_block]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_access_unblock]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_access_policy_set]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_ranges_update]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_ranges_delete]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_tags_update]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_tags_delete]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_domains_update]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.dhcp_domains_delete]
 approval_mode = "prompt"
 
 [mcp_servers.opnsense.tools.dnsmasq_reconfigure]
@@ -272,4 +382,31 @@ Health endpoints return:
   "version": "0.1.0",
   "buildHash": "unknown"
 }
+```
+
+## Image Publishing
+
+Use a version tag and a commit-specific tag for every pushed image. The version tag is convenient for humans, while the version-plus-hash tag is the precise deployment and rollback target.
+
+```bash
+USERNAME=YOURUSERNAME
+DOMAIN=registry.example.com
+IMAGE_NAME=mcp-opnsense-dnsmasq
+# VERSION="dev"
+VERSION=v0.4.2
+
+git tag -a "$VERSION" -m "$VERSION"
+git push origin "$VERSION"
+# git push --force origin "$VERSION"
+
+SHA=$(git rev-parse --short=12 HEAD)
+
+docker build -t "$IMAGE_NAME:build" -f ./Dockerfile .
+
+for TAG in latest "$VERSION" "$VERSION-$SHA"; do
+  docker tag "$IMAGE_NAME:build" "$USERNAME/$IMAGE_NAME:$TAG"
+  docker tag "$IMAGE_NAME:build" "$DOMAIN/$USERNAME/$IMAGE_NAME:$TAG"
+  docker push "$USERNAME/$IMAGE_NAME:$TAG"
+  docker push "$DOMAIN/$USERNAME/$IMAGE_NAME:$TAG"
+done
 ```

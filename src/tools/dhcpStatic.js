@@ -41,7 +41,7 @@ export const getStaticHosts = async ({ context, args = {}, requestId }) => {
     .slice(0, args.limit ?? 500);
 };
 
-const getStaticHostByUuid = async ({ context, uuid, includeRaw = false, requestId }) => {
+export const getStaticHostByUuid = async ({ context, uuid, includeRaw = false, requestId }) => {
   const raw = await context.opnsense.getHost({
     uuid,
     requestId

@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   extractRows,
+  dhcpRangePolicyMode,
+  dhcpRangeRawModeFromPolicy,
   normalizeArpRow,
+  normalizeDhcpDomain,
+  normalizeDhcpRange,
+  normalizeDhcpTag,
+  normalizeDnsmasqSettings,
+  normalizeInterfaceDetail,
   normalizeLease,
   normalizeStaticHost
 } from "../src/normalizers.js";
@@ -50,4 +57,25 @@ test("normalizes lease and ARP rows", () => {
   assert.equal(lease.is_static, true);
   assert.equal(lease.interface, "LAN");
   assert.equal(arp.mac_address, "aa:bb:cc:dd:ee:ff");
+});
+
+
+test("normalizes DHCP range policy, tags, domains, settings, and interfaces", () => {
+  const range = normalizeDhcpRange({ value: { uuid: "r1", start_addr: "10.7.1.10", mode: "static" } });
+  const tag = normalizeDhcpTag({ value: { uuid: "t1", tag: "known" } });
+  const domain = normalizeDhcpDomain({ value: { uuid: "d1", domain: "example.lan", descr: "lab" } });
+  const settings = normalizeDnsmasqSettings({ value: { dnsmasq: { dhcp: { lease_max: "100", reply_delay: "2", domain: "lan" } } } });
+  const detail = normalizeInterfaceDetail({ value: { message: { device: { value: "igb0" }, status: { value: "up" } } } });
+
+  assert.equal(range.policy_mode, "whitelist");
+  assert.equal(dhcpRangePolicyMode({ mode: "" }), "blacklist");
+  assert.equal(dhcpRangeRawModeFromPolicy({ policyMode: "whitelist" }), "static");
+  assert.equal(dhcpRangeRawModeFromPolicy({ policyMode: "blacklist" }), "");
+  assert.equal(tag.tag, "known");
+  assert.equal(domain.description, "lab");
+  assert.equal(settings.dhcp.lease_max, "100");
+  assert.equal(settings.dhcp.reply_delay, "2");
+  assert.equal(settings.dhcp.domain, "lan");
+  assert.equal(detail.device, "igb0");
+  assert.equal(detail.status, "up");
 });

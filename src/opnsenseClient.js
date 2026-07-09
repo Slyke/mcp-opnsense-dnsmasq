@@ -218,6 +218,11 @@ export const createOpnsenseClient = ({ config, logger }) => {
       path: "/api/dnsmasq/settings/get",
       requestId
     }),
+    setDnsmasqSettings: ({ dnsmasq, requestId }) => post({
+      path: "/api/dnsmasq/settings/set",
+      body: { dnsmasq },
+      requestId
+    }),
     searchHosts: ({ body = {}, requestId } = {}) => query({
       path: "/api/dnsmasq/settings/search_host",
       body,
@@ -246,9 +251,86 @@ export const createOpnsenseClient = ({ config, logger }) => {
       body,
       requestId
     }),
+    getRange: ({ uuid, requestId }) => get({
+      path: "/api/dnsmasq/settings/get_range/" + encodeURIComponent(uuid),
+      requestId
+    }),
+    addRange: ({ range, requestId }) => post({
+      path: "/api/dnsmasq/settings/add_range",
+      body: { range },
+      requestId
+    }),
+    setRange: ({ uuid, range, requestId }) => post({
+      path: "/api/dnsmasq/settings/set_range/" + encodeURIComponent(uuid),
+      body: { range },
+      requestId
+    }),
+    deleteRange: ({ uuid, requestId }) => post({
+      path: "/api/dnsmasq/settings/del_range/" + encodeURIComponent(uuid),
+      requestId
+    }),
     searchOptions: ({ body = {}, requestId } = {}) => query({
       path: "/api/dnsmasq/settings/search_option",
       body,
+      requestId
+    }),
+    getOption: ({ uuid, requestId }) => get({
+      path: "/api/dnsmasq/settings/get_option/" + encodeURIComponent(uuid),
+      requestId
+    }),
+    searchTags: ({ body = {}, requestId } = {}) => query({
+      path: "/api/dnsmasq/settings/search_tag",
+      body,
+      requestId
+    }),
+    getTag: ({ uuid, requestId }) => get({
+      path: "/api/dnsmasq/settings/get_tag/" + encodeURIComponent(uuid),
+      requestId
+    }),
+    addTag: ({ tag, requestId }) => post({
+      path: "/api/dnsmasq/settings/add_tag",
+      body: { tag },
+      requestId
+    }),
+    setTag: ({ uuid, tag, requestId }) => post({
+      path: "/api/dnsmasq/settings/set_tag/" + encodeURIComponent(uuid),
+      body: { tag },
+      requestId
+    }),
+    deleteTag: ({ uuid, requestId }) => post({
+      path: "/api/dnsmasq/settings/del_tag/" + encodeURIComponent(uuid),
+      requestId
+    }),
+    searchDomains: ({ body = {}, requestId } = {}) => query({
+      path: "/api/dnsmasq/settings/search_domain",
+      body,
+      requestId
+    }),
+    getDomain: ({ uuid, requestId }) => get({
+      path: "/api/dnsmasq/settings/get_domain/" + encodeURIComponent(uuid),
+      requestId
+    }),
+    addDomain: ({ domain, requestId }) => post({
+      path: "/api/dnsmasq/settings/add_domain",
+      body: { domainoverride: domain },
+      requestId
+    }),
+    setDomain: ({ uuid, domain, requestId }) => post({
+      path: "/api/dnsmasq/settings/set_domain/" + encodeURIComponent(uuid),
+      body: { domainoverride: domain },
+      requestId
+    }),
+    deleteDomain: ({ uuid, requestId }) => post({
+      path: "/api/dnsmasq/settings/del_domain/" + encodeURIComponent(uuid),
+      requestId
+    }),
+    getInterfacesInfo: ({ body = {}, details = false, requestId } = {}) => query({
+      path: "/api/interfaces/overview/interfaces_info" + (details ? "/1" : ""),
+      body,
+      requestId
+    }),
+    getInterface: ({ interfaceName, requestId }) => get({
+      path: "/api/interfaces/overview/get_interface/" + encodeURIComponent(interfaceName),
       requestId
     }),
     getArp: ({ requestId } = {}) => get({

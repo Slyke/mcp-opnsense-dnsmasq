@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { hasWriteScope } from "../auth.js";
-import { readOnlyError, authError, unknownError, toMcpResult } from "../errors.js";
+import { authError, unknownError, toMcpResult } from "../errors.js";
 import { normalizeMac, normalizeIpv4 } from "../ipUtils.js";
 
 export const createRequestId = () => {
@@ -15,13 +15,7 @@ export const getIdentity = ({ extra }) => {
   };
 };
 
-export const requireWriteAccess = ({ config, identity }) => {
-  if (config.readOnly) {
-    return readOnlyError({
-      message: "This MCP server is configured as read-only."
-    });
-  }
-
+export const requireWriteAccess = ({ identity }) => {
   if (!hasWriteScope({ identity })) {
     return authError({
       message: "Bearer token is not allowed to call mutating tools."
@@ -29,6 +23,86 @@ export const requireWriteAccess = ({ config, identity }) => {
   }
 
   return null;
+};
+
+const READ_RESULT_ARRAY_KEYS = [
+  "arp",
+  "history",
+  "hosts",
+  "leases",
+  "options",
+  "ranges"
+];
+
+const redactForHistory = ({ context, value }) => {
+  if (typeof context.logger?.redact !== "function") {
+    return value;
+  }
+
+  return context.logger.redact({ value });
+};
+
+const readResultSummary = ({ payload }) => {
+  if (!payload || typeof payload !== "object") {
+    return {};
+  }
+
+  if (Array.isArray(payload)) {
+    return {
+      result_count: payload.length
+    };
+  }
+
+  for (const key of READ_RESULT_ARRAY_KEYS) {
+    if (Array.isArray(payload[key])) {
+      return {
+        result_field: key,
+        result_count: payload[key].length
+      };
+    }
+  }
+
+  if (payload.error?.code) {
+    return {
+      error_code: payload.error.code
+    };
+  }
+
+  return {};
+};
+
+const appendReadHistory = ({ context, toolName, identity, requestId, args, payload }) => {
+  if (!context.config.historyRecordReads) {
+    return;
+  }
+
+  const argsTarget = args && typeof args === "object" && Object.keys(args).length > 0
+    ? { args: redactForHistory({ context, value: args }) }
+    : {};
+
+  try {
+    context.history.append({
+      toolName,
+      identityName: identity.name,
+      action: "read",
+      applied: false,
+      ok: payload?.ok !== false,
+      requestId,
+      target: {
+        ...argsTarget,
+        ...readResultSummary({ payload })
+      }
+    });
+  } catch (err) {
+    context.logger.generateLog({
+      level: "warn",
+      caller: "tools::" + toolName,
+      loggerKey: "MCP_HISTORY_APPEND_FAILED",
+      message: "Failed to append read tool history.",
+      correlationId: requestId,
+      error: err
+    });
+  }
 };
 
 export const makeToolHandler = ({ context, toolName, mutating = false, handler }) => {
@@ -53,7 +127,6 @@ export const makeToolHandler = ({ context, toolName, mutating = false, handler }
     try {
       if (mutating) {
         const writeError = requireWriteAccess({
-          config: context.config,
           identity
         });
 
@@ -78,6 +151,10 @@ export const makeToolHandler = ({ context, toolName, mutating = false, handler }
         requestId
       });
 
+      if (!mutating) {
+        appendReadHistory({ context, toolName, identity, requestId, args, payload });
+      }
+
       return toMcpResult({ payload });
     } catch (err) {
       context.logger.generateError({
@@ -94,14 +171,18 @@ export const makeToolHandler = ({ context, toolName, mutating = false, handler }
         }
       });
 
-      return toMcpResult({
-        payload: unknownError({
-          message: "Tool execution failed.",
-          details: {
-            tool_name: toolName
-          }
-        })
+      const payload = unknownError({
+        message: "Tool execution failed.",
+        details: {
+          tool_name: toolName
+        }
       });
+
+      if (!mutating) {
+        appendReadHistory({ context, toolName, identity, requestId, args, payload });
+      }
+
+      return toMcpResult({ payload });
     }
   };
 };
@@ -144,6 +225,27 @@ export const matchesCommonFilters = ({ row, args }) => {
 
 export const getIncludeRaw = ({ args, config }) => {
   return args.include_raw ?? config.includeRawDefault;
+};
+
+
+export const diffRecords = ({ before, after }) => {
+  return Object.fromEntries(
+    Object.keys(after)
+      .filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+      .map((key) => [key, {
+        before: before[key],
+        after: after[key]
+      }])
+  );
+};
+
+export const reconfigureDnsmasqIfRequested = async ({ context, reconfigure, requestId }) => {
+  if (!reconfigure) {
+    return false;
+  }
+
+  await context.opnsense.reconfigureDnsmasq({ requestId });
+  return true;
 };
 
 export const appendHistory = ({ context, toolName, identity, requestId, action, applied, ok, target }) => {

@@ -6,7 +6,6 @@ const config = {
   allowedStaticDhcpCidrs: ["10.7.0.0/16"],
   protectedIps: ["10.7.1.1", "10.7.7.77"],
   excludedIpRanges: ["10.7.20.0/24"],
-  metallbRanges: ["10.7.30.10-10.7.30.20"],
   dynamicDhcpRanges: ["10.7.100.10-10.7.102.245"],
   rejectStaticInsideDynamicRange: false
 };
@@ -27,18 +26,12 @@ test("rejects protected and out-of-CIDR IPs", () => {
   assert.equal(outsideReport.conflicts.some((entry) => entry.type === "outside_allowed_cidr"), true);
 });
 
-test("rejects excluded and MetalLB ranges", () => {
+test("rejects excluded ranges", () => {
   const excluded = findStaticReservationConflicts({
     config,
     ipAddress: "10.7.20.5"
   });
-  const metallb = findStaticReservationConflicts({
-    config,
-    ipAddress: "10.7.30.15"
-  });
-
   assert.equal(excluded.can_create, false);
-  assert.equal(metallb.can_create, false);
 });
 
 test("detects duplicate static IP and MAC", () => {
