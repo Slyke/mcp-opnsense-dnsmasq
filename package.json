@@ -1,0 +1,24 @@
+{
+  "name": "mcp-opnsense-dnsmasq",
+  "version": "0.1.0",
+  "description": "Production-oriented MCP server for OPNsense Dnsmasq DHCP management.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --test",
+    "error-add": "node scripts/error_gen.cjs --action add --error-file ./src/errors.json",
+    "error-delete": "node scripts/error_gen.cjs --action delete --error-file ./src/errors.json",
+    "error-rm": "node scripts/error_gen.cjs --action delete --error-file ./src/errors.json",
+    "error-validate": "node scripts/error_gen.cjs --action validate --error-file ./src/errors.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "json5": "^2.2.3",
+    "zod": "^3.25.76"
+  }
+}
