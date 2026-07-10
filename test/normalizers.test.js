@@ -11,6 +11,7 @@ import {
   normalizeDnsmasqSettings,
   normalizeInterfaceDetail,
   normalizeLease,
+  normalizeNdpRow,
   normalizeStaticHost
 } from "../src/normalizers.js";
 
@@ -57,6 +58,35 @@ test("normalizes lease and ARP rows", () => {
   assert.equal(lease.is_static, true);
   assert.equal(lease.interface, "LAN");
   assert.equal(arp.mac_address, "aa:bb:cc:dd:ee:ff");
+});
+
+test("normalizes IPv6 leases and NDP rows", () => {
+  const lease = normalizeLease({
+    value: {
+      ipv6_address: "FE80::AABB%igb0",
+      mac: "AA:BB:CC:DD:EE:FF",
+      duid: "duid-1",
+      iaid: "iaid-1"
+    }
+  });
+  const ndp = normalizeNdpRow({
+    value: {
+      ipv6: "2001:db8::10",
+      lladdr: "AA-BB-CC-DD-EE-FF",
+      intf: "igb0_vlan20",
+      vlan_tag: "20"
+    }
+  });
+
+  assert.equal(lease.ip_address, "fe80::aabb");
+  assert.equal(lease.ip_version, 6);
+  assert.equal(lease.duid, "duid-1");
+  assert.equal(lease.iaid, "iaid-1");
+  assert.equal(ndp.ip_address, "2001:db8::10");
+  assert.equal(ndp.ip_version, 6);
+  assert.equal(ndp.mac_address, "aa:bb:cc:dd:ee:ff");
+  assert.equal(ndp.interface, "igb0_vlan20");
+  assert.equal(ndp.vlan, "20");
 });
 
 

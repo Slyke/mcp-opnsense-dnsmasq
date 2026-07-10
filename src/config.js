@@ -5,6 +5,7 @@ import JSON5 from "json5";
 const DEFAULT_CONFIG_FILE = "./config.json5";
 const DEFAULT_HISTORY_FILE = "./history.jsonl";
 const DEFAULT_CERTS_DIR = "./certs";
+const DEFAULT_INVENTORY_DB_FILE = "./data/inventory.sqlite";
 
 const parseBoolean = ({ value, fallback = false }) => {
   if (value === undefined || value === null || value === "") {
@@ -301,6 +302,139 @@ export const loadConfig = ({
         fallback: false
       })
     }),
+    inventory: {
+      enabled: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_ENABLED",
+          configPath: "inventory.enabled",
+          fallback: false
+        })
+      }),
+      dbPath: path.resolve(cwd, String(envOrConfig({
+        env,
+        config: fileConfig,
+        envKey: "INVENTORY_DB_PATH",
+        configPath: "inventory.dbPath",
+        fallback: DEFAULT_INVENTORY_DB_FILE
+      }))),
+      pollEnabled: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_POLL_ENABLED",
+          configPath: "inventory.pollEnabled",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      pollOnStart: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_POLL_ON_START",
+          configPath: "inventory.pollOnStart",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      pollIntervalMs: parseNumber({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_POLL_INTERVAL_MS",
+          configPath: "inventory.pollIntervalMs",
+          fallback: 120000
+        }),
+        fallback: 120000,
+        min: 10000,
+        max: 86400000
+      }),
+      includeRaw: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_INCLUDE_RAW",
+          configPath: "inventory.includeRaw",
+          fallback: false
+        })
+      }),
+      collectLeases: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_COLLECT_LEASES",
+          configPath: "inventory.collectLeases",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      collectArp: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_COLLECT_ARP",
+          configPath: "inventory.collectArp",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      collectNdp: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_COLLECT_NDP",
+          configPath: "inventory.collectNdp",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      collectStaticHosts: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_COLLECT_STATIC_HOSTS",
+          configPath: "inventory.collectStaticHosts",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      collectInterfaces: parseBoolean({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_COLLECT_INTERFACES",
+          configPath: "inventory.collectInterfaces",
+          fallback: true
+        }),
+        fallback: true
+      }),
+      rowLimit: parseNumber({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_ROW_LIMIT",
+          configPath: "inventory.rowLimit",
+          fallback: 5000
+        }),
+        fallback: 5000,
+        min: 100,
+        max: 50000
+      }),
+      retentionDays: parseNumber({
+        value: envOrConfig({
+          env,
+          config: fileConfig,
+          envKey: "INVENTORY_RETENTION_DAYS",
+          configPath: "inventory.retentionDays",
+          fallback: 365
+        }),
+        fallback: 365,
+        min: 0,
+        max: 3650
+      })
+    },
     certsDir: path.resolve(cwd, String(envOrConfig({
       env,
       config: fileConfig,
@@ -421,6 +555,10 @@ export const publicConfigSummary = ({ config }) => {
     allowed_lan_cidrs: config.allowedStaticDhcpCidrs,
     protected_ips: config.protectedIps,
     excluded_ip_ranges: config.excludedIpRanges,
-    reject_static_inside_dynamic_range: config.rejectStaticInsideDynamicRange
+    reject_static_inside_dynamic_range: config.rejectStaticInsideDynamicRange,
+    inventory_enabled: config.inventory.enabled,
+    inventory_db_path: config.inventory.dbPath,
+    inventory_poll_enabled: config.inventory.pollEnabled,
+    inventory_poll_interval_ms: config.inventory.pollIntervalMs
   };
 };

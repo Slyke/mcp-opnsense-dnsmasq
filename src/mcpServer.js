@@ -10,6 +10,7 @@ import { registerDhcpStaticTools } from "./tools/dhcpStatic.js";
 import { registerDhcpTagTools } from "./tools/dhcpTags.js";
 import { registerDnsmasqTools } from "./tools/dnsmasq.js";
 import { registerInterfaceTools } from "./tools/interfaces.js";
+import { registerInventoryTools } from "./tools/inventory.js";
 
 export const createMcpServer = ({ context, buildInfo }) => {
   const server = new McpServer(
@@ -35,6 +36,7 @@ export const createMcpServer = ({ context, buildInfo }) => {
   registerDiagnosticTools({ server, context });
   registerInterfaceTools({ server, context });
   registerClientSummaryTools({ server, context });
+  registerInventoryTools({ server, context });
 
   return server;
 };

@@ -1,3 +1,5 @@
+import net from "node:net";
+
 const IPV4_PART_PATTERN = /^(?:0|[1-9][0-9]{0,2})$/;
 const MAC_HEX_PATTERN = /^[0-9a-f]{12}$/i;
 const CONTROL_CHARS_PATTERN = /[\u0000-\u001f\u007f]/g;
@@ -32,6 +34,38 @@ export const normalizeIpv4 = ({ value }) => {
   }
 
   return trimmed.split(".").map((part) => String(Number(part))).join(".");
+};
+
+const stripIpv6Zone = ({ value }) => {
+  return String(value ?? "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .split("%")[0];
+};
+
+export const normalizeIpv6 = ({ value }) => {
+  const trimmed = stripIpv6Zone({ value });
+
+  if (net.isIP(trimmed) !== 6) {
+    return null;
+  }
+
+  return trimmed.toLowerCase();
+};
+
+export const normalizeIpAddress = ({ value }) => {
+  return normalizeIpv4({ value }) ?? normalizeIpv6({ value }) ?? "";
+};
+
+export const ipVersionOf = ({ value }) => {
+  const normalized = normalizeIpAddress({ value });
+
+  if (!normalized) {
+    return null;
+  }
+
+  return net.isIP(normalized);
 };
 
 export const ipv4ToInt = ({ value }) => {
@@ -206,5 +240,5 @@ export const isValidHostname = ({ value, strict = false }) => {
 
 export const isHostnameOrIp = ({ value }) => {
   const normalized = String(value ?? "").trim();
-  return Boolean(normalizeIpv4({ value: normalized }) || isValidHostname({ value: normalized }));
+  return Boolean(normalizeIpAddress({ value: normalized }) || isValidHostname({ value: normalized }));
 };

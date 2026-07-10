@@ -6,6 +6,7 @@ import { getBuildInfo } from "./buildInfo.js";
 import { ensureHttpsCertificates } from "./certs.js";
 import { loadConfig } from "./config.js";
 import { createHistoryStore } from "./history.js";
+import { createInventoryPoller, createInventoryService } from "./inventory.js";
 import { createLogger } from "./logger.js";
 import { createMcpServer } from "./mcpServer.js";
 import { createOpnsenseClient } from "./opnsenseClient.js";
@@ -127,6 +128,87 @@ const handleMcpPost = async ({ req, res, context, buildInfo, identity }) => {
   await transport.handleRequest(req, res);
 };
 
+const parseBooleanQuery = ({ value, fallback = false }) => {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  return ["1", "true", "yes", "y", "on"].includes(String(value).trim().toLowerCase());
+};
+
+const inventoryExportError = ({ res, statusCode, code, message, details = {} }) => {
+  sendJson({
+    res,
+    statusCode,
+    body: {
+      ok: false,
+      error: {
+        code,
+        message,
+        details
+      }
+    }
+  });
+};
+
+const handleInventoryExport = ({ res, context, url, identity }) => {
+  if (!context.inventory.enabled) {
+    inventoryExportError({
+      res,
+      statusCode: 404,
+      code: "inventory_disabled",
+      message: "Inventory is disabled. Set INVENTORY_ENABLED=true or inventory.enabled=true.",
+      details: {
+        db_path: context.config.inventory.dbPath
+      }
+    });
+    return;
+  }
+
+  const table = String(url.searchParams.get("table") ?? "");
+  const exported = context.inventory.exportCsv({
+    table,
+    includeRaw: parseBooleanQuery({ value: url.searchParams.get("include_raw") })
+  });
+
+  if (!exported) {
+    inventoryExportError({
+      res,
+      statusCode: 400,
+      code: "validation_error",
+      message: "table must be one of devices, pairings, observations, or poll_runs.",
+      details: {
+        allowed_tables: ["devices", "pairings", "observations", "poll_runs"]
+      }
+    });
+    return;
+  }
+
+  const filename = "inventory-" + exported.table + "-" + new Date().toISOString().replace(/[:.]/g, "-") + ".csv";
+  const payload = exported.csv;
+  res.writeHead(200, {
+    "cache-control": "no-store",
+    "content-disposition": "attachment; filename=\"" + filename + "\"",
+    "content-length": Buffer.byteLength(payload),
+    "content-type": "text/csv; charset=utf-8",
+    "x-inventory-row-count": String(exported.row_count),
+    "x-inventory-table": exported.table
+  });
+  res.end(payload);
+
+  context.logger.generateLog({
+    level: "info",
+    caller: "index::inventoryExport",
+    loggerKey: "INVENTORY_EXPORT_CSV",
+    message: "Inventory CSV exported.",
+    context: {
+      identity_name: identity.name,
+      table: exported.table,
+      row_count: exported.row_count
+    }
+  });
+};
+
 const createRequestHandler = ({ context, buildInfo }) => {
   return async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -180,6 +262,31 @@ const createRequestHandler = ({ context, buildInfo }) => {
           config: context.config,
           opnsense: context.opnsense,
           buildInfo
+        });
+        return;
+      }
+
+      if (url.pathname === "/inventory/export.csv") {
+        const identity = authenticateRoute({
+          req,
+          res,
+          config: context.config
+        });
+
+        if (!identity) {
+          return;
+        }
+
+        if (req.method !== "GET") {
+          sendMethodNotAllowed({ res });
+          return;
+        }
+
+        handleInventoryExport({
+          res,
+          context,
+          url,
+          identity
         });
         return;
       }
@@ -306,7 +413,11 @@ const logStartupDiagnostics = ({ logger, buildInfo, config }) => {
     httpsPort: config.https.port,
     opnsenseBaseUrlConfigured: Boolean(config.opnsense.baseUrl),
     opnsenseApiKeyConfigured: Boolean(config.opnsense.apiKey),
-    opnsenseApiSecretConfigured: Boolean(config.opnsense.apiSecret)
+    opnsenseApiSecretConfigured: Boolean(config.opnsense.apiSecret),
+    inventoryEnabled: config.inventory.enabled,
+    inventoryDbPath: config.inventory.dbPath,
+    inventoryPollEnabled: config.inventory.pollEnabled,
+    inventoryPollIntervalMs: config.inventory.pollIntervalMs
   };
 
   if (Object.keys(kubernetes).length > 0 && process.env.LOG_K8S_METADATA_ENABLED !== "true") {
@@ -337,6 +448,13 @@ export const main = async () => {
     history,
     opnsense
   };
+  const inventory = await createInventoryService({
+    context
+  });
+  context.inventory = inventory;
+  const inventoryPoller = createInventoryPoller({
+    context
+  });
   const requestHandler = createRequestHandler({
     context,
     buildInfo
@@ -392,6 +510,8 @@ export const main = async () => {
     });
   }
 
+  inventoryPoller.start();
+
   const shutdown = async ({ signal }) => {
     logger.generateLog({
       level: "info",
@@ -403,7 +523,9 @@ export const main = async () => {
       }
     });
 
+    inventoryPoller.stop();
     await Promise.all(servers.map((server) => closeServer({ server })));
+    context.inventory.close();
     process.exit(0);
   };
 

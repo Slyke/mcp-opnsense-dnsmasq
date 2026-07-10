@@ -39,7 +39,7 @@ Target: OPNsense 25.7.x Dnsmasq DNS & DHCP.
 8. Download or copy the generated key and secret immediately. OPNsense shows the secret only once.
 9. Set OPNSENSE_API_KEY to the generated key and OPNSENSE_API_SECRET to the generated secret.
 
-The Dnsmasq Settings privilege covers Dnsmasq service status, leases, settings, hosts, ranges, options, DHCP tags, domain overrides, and reconfigure APIs in OPNsense 25.7. Status: Overview is needed for `interfaces_list` and `interfaces_get`. Diagnostics: ARP Table is needed for ARP tools and richer conflict/client summaries. Diagnostics: Ping is only needed for `router_ping` and `client_summary` when ping is requested. Services: Dnsmasq DNS/DHCP: Log File is not used by this MCP server.
+The Dnsmasq Settings privilege covers Dnsmasq service status, leases, settings, hosts, ranges, options, DHCP tags, domain overrides, and reconfigure APIs in OPNsense 25.7. Status: Overview is needed for `interfaces_list`, `interfaces_get`, and inventory interface/VLAN enrichment. Diagnostics: ARP Table is needed for ARP tools and richer conflict/client summaries. The inventory collector also reads the diagnostics NDP table for IPv6 neighbor observations. Diagnostics: Ping is only needed for `router_ping` and `client_summary` when ping is requested. Services: Dnsmasq DNS/DHCP: Log File is not used by this MCP server.
 
 The server sends these values to OPNsense as HTTP Basic Auth, with the key as username and the secret as password. Do not use an administrator personal API key for this integration. If OPNsense returns HTTP 403, the API user is authenticated but likely missing one of the listed privileges.
 
@@ -72,6 +72,19 @@ CONFIG_FILE=./data/config.json5
 HISTORY_FILE=./data/history.jsonl
 HISTORY_COUNT=50
 HISTORY_RECORD_READS=false
+INVENTORY_ENABLED=false
+INVENTORY_DB_PATH=./data/inventory.sqlite
+INVENTORY_POLL_ENABLED=true
+INVENTORY_POLL_ON_START=true
+INVENTORY_POLL_INTERVAL_MS=120000
+INVENTORY_INCLUDE_RAW=false
+INVENTORY_COLLECT_LEASES=true
+INVENTORY_COLLECT_ARP=true
+INVENTORY_COLLECT_NDP=true
+INVENTORY_COLLECT_STATIC_HOSTS=true
+INVENTORY_COLLECT_INTERFACES=true
+INVENTORY_ROW_LIMIT=5000
+INVENTORY_RETENTION_DAYS=365
 CERTS_DIR=./data/certs
 OPNSENSE_TIMEOUT_MS=10000
 OPNSENSE_TLS_REJECT_UNAUTHORIZED=true
@@ -92,6 +105,12 @@ MAX_PING_PACKET_SIZE=128
 ```
 
 Set HISTORY_RECORD_READS=true or history.recordReads: true to append read-only MCP calls to history for troubleshooting. Read history entries store request metadata, identity name, tool name, redacted arguments, result count when available, and error code when a tool returns an error; they do not store router response bodies.
+
+Set INVENTORY_ENABLED=true or inventory.enabled: true to maintain a local SQLite inventory. Inventory records last-seen observations from Dnsmasq leases, ARP, NDP, static hosts, and interface metadata. It stores device rollups, IP/MAC/interface/VLAN pairings, raw observation history, and poll run summaries. The inventory does not mark devices online or offline; use `last_seen_at`, `last_network_seen_at`, and `last_seen_source`.
+
+Inventory uses Node's built-in `node:sqlite` module. When running outside the Docker image, use Node.js 22.13 or newer.
+
+For low-token bulk exports, use the authenticated HTTP endpoint `GET /inventory/export.csv?table=devices`, `pairings`, `observations`, or `poll_runs`. It uses the same bearer-token auth as `/mcp` and excludes `raw_json` unless `include_raw=true` is supplied.
 
 Environment variables override ./data/config.json5. If HTTPS is enabled and `server.crt`/`server.key` are missing in `CERTS_DIR`, the server generates a local self-signed certificate.
 
@@ -301,6 +320,27 @@ approval_mode = "auto"
 [mcp_servers.opnsense.tools.router_ping]
 approval_mode = "prompt"
 
+[mcp_servers.opnsense.tools.inventory_status]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.inventory_devices_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.inventory_pairings_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.inventory_observations_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.inventory_poll_runs_search]
+approval_mode = "auto"
+
+[mcp_servers.opnsense.tools.inventory_export_csv]
+approval_mode = "prompt"
+
+[mcp_servers.opnsense.tools.inventory_refresh]
+approval_mode = "prompt"
+
 [mcp_servers.opnsense.tools.dhcp_static_create]
 approval_mode = "prompt"
 
@@ -411,6 +451,16 @@ Read-only tools:
 - `router_ping`
 - `client_summary`
 - `history_search`
+- `inventory_status`
+- `inventory_devices_search`
+- `inventory_pairings_search`
+- `inventory_observations_search`
+- `inventory_poll_runs_search`
+- `inventory_export_csv` (token-heavy full CSV body through MCP)
+
+Local inventory refresh tool reads OPNsense and writes the SQLite cache, but does not mutate OPNsense:
+
+- `inventory_refresh`
 
 Mutating tools require a readwrite token and include `apply`, defaulting to `false`:
 
@@ -498,7 +548,7 @@ Health endpoints return:
 ```json
 {
   "ok": true,
-  "version": "0.1.0",
+  "version": "0.0.2",
   "buildHash": "unknown"
 }
 ```

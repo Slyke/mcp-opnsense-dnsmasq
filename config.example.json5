@@ -38,6 +38,22 @@
     recordReads: false,
   },
 
+  inventory: {
+    enabled: false,
+    dbPath: "./data/inventory.sqlite",
+    pollEnabled: true,
+    pollOnStart: true,
+    pollIntervalMs: 120000,
+    includeRaw: false,
+    collectLeases: true,
+    collectArp: true,
+    collectNdp: true,
+    collectStaticHosts: true,
+    collectInterfaces: true,
+    rowLimit: 5000,
+    retentionDays: 365,
+  },
+
   certsDir: "./data/certs",
   readyCheckOpnsense: false,
 

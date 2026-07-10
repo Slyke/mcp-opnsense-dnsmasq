@@ -342,6 +342,15 @@ export const createOpnsenseClient = ({ config, logger }) => {
       body,
       requestId
     }),
+    getNdp: ({ requestId } = {}) => get({
+      path: "/api/diagnostics/interface/get_ndp",
+      requestId
+    }),
+    searchNdp: ({ body = {}, requestId } = {}) => query({
+      path: "/api/diagnostics/interface/search_ndp",
+      body,
+      requestId
+    }),
     getMacInfo: ({ macAddress, requestId }) => get({
       path: `/api/diagnostics/packet_capture/mac_info/${encodeURIComponent(macAddress)}`,
       requestId

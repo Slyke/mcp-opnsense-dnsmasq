@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { hasWriteScope } from "../auth.js";
 import { authError, unknownError, toMcpResult } from "../errors.js";
-import { normalizeMac, normalizeIpv4 } from "../ipUtils.js";
+import { normalizeMac, normalizeIpAddress } from "../ipUtils.js";
 
 export const createRequestId = () => {
   return randomUUID();
@@ -27,10 +27,14 @@ export const requireWriteAccess = ({ identity }) => {
 
 const READ_RESULT_ARRAY_KEYS = [
   "arp",
+  "devices",
   "history",
   "hosts",
+  "observations",
+  "pairings",
   "leases",
   "options",
+  "poll_runs",
   "ranges"
 ];
 
@@ -197,7 +201,7 @@ export const textIncludes = ({ value, query }) => {
 
 export const matchesCommonFilters = ({ row, args }) => {
   const query = String(args.query ?? "").trim().toLowerCase();
-  const ipAddress = args.ip_address ? normalizeIpv4({ value: args.ip_address }) : "";
+  const ipAddress = args.ip_address ? normalizeIpAddress({ value: args.ip_address }) : "";
   const macAddress = args.mac_address ? normalizeMac({ value: args.mac_address }) : "";
 
   if (ipAddress && row.ip_address !== ipAddress) {

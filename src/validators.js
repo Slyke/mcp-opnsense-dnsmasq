@@ -400,6 +400,74 @@ export const historySearchSchema = {
   limit: z.number().int().min(1).max(500).default(50).optional()
 };
 
+export const inventoryStatusSchema = {};
+
+export const inventoryExportCsvSchema = {
+  table: z.enum(["devices", "pairings", "observations", "poll_runs"]),
+  ...includeRawField
+};
+
+export const inventoryRefreshSchema = {
+  leases: optionalBoolean,
+  arp: optionalBoolean,
+  ndp: optionalBoolean,
+  static_hosts: optionalBoolean,
+  interfaces: optionalBoolean,
+  ...includeRawField
+};
+
+const inventoryTimeRangeFields = {
+  seen_since: optionalString,
+  seen_before: optionalString,
+  observed_since: optionalString,
+  observed_before: optionalString
+};
+
+const inventoryCommonSearchFields = {
+  query: optionalString,
+  ip_address: optionalString,
+  ip_version: z.union([z.literal(4), z.literal(6)]).optional(),
+  mac_address: optionalString,
+  hostname: optionalString,
+  interface: optionalString,
+  interface_name: optionalString,
+  vlan: optionalString,
+  source: optionalString,
+  client_uuid: optionalString,
+  client_id: optionalString,
+  duid: optionalString,
+  iaid: optionalString,
+  lease_uuid: optionalString,
+  static_host_uuid: optionalString,
+  router_uuid: optionalString,
+  limit: z.number().int().min(1).max(5000).default(100).optional(),
+  ...includeRawField
+};
+
+export const inventoryDevicesSearchSchema = {
+  ...inventoryCommonSearchFields,
+  ...inventoryTimeRangeFields
+};
+
+export const inventoryPairingsSearchSchema = {
+  ...inventoryCommonSearchFields,
+  ...inventoryTimeRangeFields
+};
+
+export const inventoryObservationsSearchSchema = {
+  ...inventoryCommonSearchFields,
+  ...inventoryTimeRangeFields,
+  poll_run_id: z.number().int().min(1).optional()
+};
+
+export const inventoryPollRunsSearchSchema = {
+  trigger: optionalString,
+  status: optionalString,
+  started_since: optionalString,
+  started_before: optionalString,
+  limit: z.number().int().min(1).max(500).default(50).optional()
+};
+
 export const validateStaticReservation = ({ record, config }) => {
   const errors = [];
   const hostname = stripControlChars({ value: record.hostname });

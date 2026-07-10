@@ -1,5 +1,8 @@
 import {
+  ipVersionOf,
+  normalizeIpAddress,
   normalizeIpv4,
+  normalizeIpv6,
   normalizeMac,
   normalizeMacList,
   normalizeStringList,
@@ -187,18 +190,32 @@ export const normalizeStaticHost = ({ value, include_raw = false }) => {
 
 export const normalizeLease = ({ value, include_raw = false }) => {
   const row = value ?? {};
+  const ipAddress = normalizeIpAddress({
+    value: pickFirst({ value: row, keys: ["ip_address", "address", "ip", "ipv6", "ipv6_address"] })
+  });
+  const uuid = String(pickFirst({ value: row, keys: ["uuid", "_uuid", "id"], fallback: "" }));
   const normalized = {
-    ip_address: normalizeIpv4({
-      value: pickFirst({ value: row, keys: ["ip_address", "address", "ip"] })
-    }) ?? "",
+    uuid,
+    ip_address: ipAddress,
+    ip_version: ipVersionOf({ value: ipAddress }),
     mac_address: firstMacFromValue({
       value: pickFirst({ value: row, keys: ["mac_address", "hwaddr", "hw_address", "mac"] })
     }),
     hostname: stripControlChars({ value: pickFirst({ value: row, keys: ["hostname", "host", "name"] }) }),
     client_id: stripControlChars({ value: pickFirst({ value: row, keys: ["client_id"] }) }),
+    client_uuid: stripControlChars({
+      value: pickFirst({ value: row, keys: ["client_uuid", "clientid_uuid", "client_id_uuid"] })
+    }),
+    duid: stripControlChars({ value: pickFirst({ value: row, keys: ["duid", "dhcp_unique_identifier"] }) }),
+    iaid: stripControlChars({ value: pickFirst({ value: row, keys: ["iaid", "identity_association_id"] }) }),
+    lease_uuid: stripControlChars({ value: pickFirst({ value: row, keys: ["lease_uuid"], fallback: uuid }) }),
     interface: stripControlChars({
       value: pickFirst({ value: row, keys: ["if_descr", "interface", "interface_name", "if_name"] })
     }),
+    interface_name: stripControlChars({
+      value: pickFirst({ value: row, keys: ["intf_description", "interface_description", "if_descr"] })
+    }),
+    vlan: stripControlChars({ value: pickFirst({ value: row, keys: ["vlan", "vlan_tag", "tag"] }) }),
     lease_start: String(pickFirst({ value: row, keys: ["lease_start", "start"] })),
     lease_end: String(pickFirst({ value: row, keys: ["lease_end", "end"] })),
     expires: String(pickFirst({ value: row, keys: ["expires", "expiry", "valid_until"] })),
@@ -306,10 +323,12 @@ export const normalizeDhcpDomain = ({ value, include_raw = false }) => {
 
 export const normalizeArpRow = ({ value, include_raw = false }) => {
   const row = value ?? {};
+  const ipAddress = normalizeIpv4({
+    value: pickFirst({ value: row, keys: ["ip_address", "ip", "address"] })
+  }) ?? "";
   const normalized = {
-    ip_address: normalizeIpv4({
-      value: pickFirst({ value: row, keys: ["ip_address", "ip", "address"] })
-    }) ?? "",
+    ip_address: ipAddress,
+    ip_version: ipVersionOf({ value: ipAddress }),
     mac_address: firstMacFromValue({
       value: pickFirst({ value: row, keys: ["mac_address", "mac", "hwaddr", "ether"] })
     }),
@@ -320,7 +339,38 @@ export const normalizeArpRow = ({ value, include_raw = false }) => {
     interface_name: stripControlChars({
       value: pickFirst({ value: row, keys: ["intf_description", "interface_name"] })
     }),
+    vlan: stripControlChars({ value: pickFirst({ value: row, keys: ["vlan", "vlan_tag", "tag"] }) }),
     hostname: stripControlChars({ value: pickFirst({ value: row, keys: ["hostname", "host", "name"] }) })
+  };
+
+  return includeRaw({ normalized, raw: value, enabled: include_raw });
+};
+
+export const normalizeNdpRow = ({ value, include_raw = false }) => {
+  const row = value ?? {};
+  const ipAddress = normalizeIpv6({
+    value: pickFirst({
+      value: row,
+      keys: ["ip_address", "ipv6_address", "ipv6", "ip", "address", "neighbor", "target"]
+    })
+  }) ?? "";
+  const normalized = {
+    ip_address: ipAddress,
+    ip_version: ipVersionOf({ value: ipAddress }),
+    mac_address: firstMacFromValue({
+      value: pickFirst({ value: row, keys: ["mac_address", "mac", "hwaddr", "ether", "lladdr"] })
+    }),
+    manufacturer: stripControlChars({
+      value: pickFirst({ value: row, keys: ["manufacturer", "mac_info", "vendor"] })
+    }),
+    interface: stripControlChars({ value: pickFirst({ value: row, keys: ["intf", "interface", "if", "if_name"] }) }),
+    interface_name: stripControlChars({
+      value: pickFirst({ value: row, keys: ["intf_description", "interface_name", "if_descr"] })
+    }),
+    vlan: stripControlChars({ value: pickFirst({ value: row, keys: ["vlan", "vlan_tag", "tag"] }) }),
+    hostname: stripControlChars({ value: pickFirst({ value: row, keys: ["hostname", "host", "name"] }) }),
+    state: stripControlChars({ value: pickFirst({ value: row, keys: ["state", "status"] }) }),
+    expires: String(pickFirst({ value: row, keys: ["expires", "expiry", "expire"] }))
   };
 
   return includeRaw({ normalized, raw: value, enabled: include_raw });
