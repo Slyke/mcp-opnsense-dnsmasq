@@ -108,7 +108,7 @@ Set HISTORY_RECORD_READS=true or history.recordReads: true to append read-only M
 
 Set INVENTORY_ENABLED=true or inventory.enabled: true to maintain a local SQLite inventory. Inventory records last-seen observations from Dnsmasq leases, ARP, NDP, static hosts, and interface metadata. It stores device rollups, IP/MAC/interface/VLAN pairings, raw observation history, and poll run summaries. The inventory does not mark devices online or offline; use `last_seen_at`, `last_network_seen_at`, and `last_seen_source`.
 
-Inventory uses Node's built-in `node:sqlite` module. When running outside the Docker image, use Node.js 22.13 or newer.
+Inventory uses Node's built-in `node:sqlite` module. When running outside the Docker image, use Node.js 24.22.1 (LTS) or newer. The Docker image uses Node.js 24.22.1.
 
 For low-token bulk exports, use the authenticated HTTP endpoint `GET /inventory/export.csv?table=devices`, `pairings`, `observations`, or `poll_runs`. It uses the same bearer-token auth as `/mcp` and excludes `raw_json` unless `include_raw=true` is supplied.
 
@@ -548,7 +548,7 @@ Health endpoints return:
 ```json
 {
   "ok": true,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "buildHash": "unknown"
 }
 ```

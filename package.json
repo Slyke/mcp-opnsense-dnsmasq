@@ -1,11 +1,11 @@
 {
   "name": "mcp-opnsense-dnsmasq",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Production-oriented MCP server for OPNsense Dnsmasq DHCP management.",
   "type": "module",
   "main": "src/index.js",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=24.22.1"
   },
   "scripts": {
     "start": "node src/index.js",

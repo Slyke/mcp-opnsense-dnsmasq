@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS build-info
+FROM node:24.22.1-bookworm-slim AS build-info
 
 WORKDIR /workspace
 
@@ -8,7 +8,7 @@ COPY .git ./.git
 
 RUN node scripts/write-build-info.mjs --output /build-info.json
 
-FROM node:22-bookworm-slim AS deps
+FROM node:24.22.1-bookworm-slim AS deps
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY package.json package-lock.json ./
 
 RUN npm ci --omit=dev --ignore-scripts
 
-FROM node:22-bookworm-slim
+FROM node:24.22.1-bookworm-slim
 
 WORKDIR /app
 

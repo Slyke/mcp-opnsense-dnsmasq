@@ -7,7 +7,7 @@ USERNAME=YOURUSERNAME
 DOMAIN=registry.example.com
 IMAGE_NAME=mcp-opnsense-dnsmasq
 # VERSION="dev"
-VERSION=v0.0.1
+VERSION=v0.0.3
 
 git tag -a "$VERSION" -m "$VERSION"
 # git tag -d "$VERSION"
